@@ -1,0 +1,20 @@
+{% ckan_extends %}
+
+{#
+  Renders a single resource with icons and view links.
+
+  res - A resource dict to render
+  pkg - A package dict that the resource belongs to
+#}
+
+
+{% block resource_item_explore %}
+  {% if not h.is_resource_available(pkg, res) %}
+    <div class=" btn-group">
+      <b>{{ _('Available since') }}</b>
+      <p>{{ res['available_since'] }}</p>
+    </div>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
