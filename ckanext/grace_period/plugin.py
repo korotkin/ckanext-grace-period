@@ -5,7 +5,6 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 from ckan import authz
 from ckan.common import _, g
-from ckan.logic import side_effect_free
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def get_helpers(self):
         return {
             'is_resource_available': self._is_resource_available,
-            # 'is_check_availability': self._is_check_availability,
         }
 
     def is_fallback(self):
@@ -50,10 +48,10 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
             except ValueError:
                 is_available = False
             else:
-                is_available = dt > datetime.now()
+                is_available = dt < datetime.now()
 
                 # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
-                if is_available and \
+                if not is_available or \
                         authz.check_config_permission('allow_dataset_collaborators'):
                     is_available = authz.user_is_collaborator_on_dataset(
                         g.userobj.id, pkg['id']
