@@ -26,7 +26,7 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def get_helpers(self):
         return {
-            'is_resource_available': self._is_resource_available,
+            'is_resource_available': self._is_allowed_by_grace_period,
         }
 
     def is_fallback(self):
@@ -42,18 +42,24 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def package_form(self):
         return super().package_form()
 
-    def _is_resource_available(self, pkg, res):
-        if 'extras' in res and 'available_since' in res['extras']:
+    def _is_allowed_by_grace_period(self, pkg, res):
+        if 'extras' in res:
+            available_since = res['extras'].get('available_since', None)
+            if available_since:
+                try:
+                    return self._try_parse(available_since) < datetime.now()
+                except ValueError as e:
+                    log.warning(e)
+                    return False
+        return True
+
+    def _try_parse(self, s):
+        for date_fmt in ('%Y.%m.%d', '%Y-%m-%d', '%Y %m %d'):
             try:
-                available_since = res['extras']['available_since']
-                dt = datetime.strptime(available_since, '%Y.%m.%d')
+                return datetime.strptime(s, date_fmt)
             except ValueError:
-                is_available = False
-            else:
-                is_available = dt < datetime.now()
-        else:
-            is_available = True
-        return is_available
+                pass
+        raise ValueError(f'Could not parse grace period end "{s}"')
 
     def _modify_package_schema(self, schema):
         schema['extras'].update({
@@ -102,33 +108,34 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
             resource = logic_auth.get_resource_object(context, data_dict)
         if type(resource) is not dict:
             resource = resource.as_dict()
-        is_authorized = authz.is_authorized(
-            'package_show', context, {'id': resource.get('package_id')}
-        ).get('success', False)
 
-        # Grace period check
-        if is_authorized:
-            is_resource_available = self._is_resource_available(
-                pkg.__dict__, res.__dict__
-            )
-            # Check collaborators if authenticated
-            # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
-            is_collaborator = False
-            if g.userobj is not None and authz.check_config_permission(
-                'allow_dataset_collaborators'
-            ):
-                is_collaborator = authz.user_is_collaborator_on_dataset(
-                    g.userobj.id, pkg.id
-                )
-
-            is_authorized = is_resource_available or is_collaborator
-
-        if is_authorized:
+        if authz.is_authorized(
+                'package_update', context,
+                {'id': resource.get('package_id')}).get('success'):
             return {'success': True}
-        else:
+
+        auth = authz.is_authorized('package_show', context, {'id': resource.get('package_id')})
+        if not auth.get('success', False):
             return {
                 'success': False,
-                'msg': _('User {} not authorized to read resource {}').format(
-                    g.user, res.id
-                )
+                'msg': _('User {} not authorized to read resource {}').format(g.user, res.id)
             }
+
+        # Grace period check
+        if self._is_allowed_by_grace_period(pkg.__dict__, res.__dict__):
+            return {'success': True}
+
+        # Check collaborators if authenticated
+        # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
+
+        if g.userobj and \
+                authz.check_config_permission('allow_dataset_collaborators') and \
+                authz.user_is_collaborator_on_dataset(g.userobj.id, pkg.id):
+            return {'success': True}
+
+        return {
+            'success': False,
+            'msg': _('User {} not authorized to read resource {} in its grace period').format(
+                g.userobj.name if g.userobj else '-Anonymous-', res.id
+            )
+        }
