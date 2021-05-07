@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime
 
+import ckan.logic.auth as logic_auth
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckan import authz
+from ckan import authz, logic
 from ckan.common import _, g
 
 log = logging.getLogger(__name__)
@@ -42,20 +43,14 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
         return super().package_form()
 
     def _is_resource_available(self, pkg, res):
-        if 'available_since' in res:
+        if 'extras' in res and 'available_since' in res['extras']:
             try:
-                dt = datetime.strptime(res['available_since'], '%Y.%m.%d')
+                available_since = res['extras']['available_since']
+                dt = datetime.strptime(available_since, '%Y.%m.%d')
             except ValueError:
                 is_available = False
             else:
                 is_available = dt < datetime.now()
-
-                # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
-                if not is_available or \
-                        authz.check_config_permission('allow_dataset_collaborators'):
-                    is_available = authz.user_is_collaborator_on_dataset(
-                        g.userobj.id, pkg['id']
-                    )
         else:
             is_available = True
         return is_available
@@ -87,8 +82,10 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def get_auth_functions(self):
         return {
             'resource_show': self.auth_resource_show,
+            'resource_read': self.auth_resource_show,
         }
 
+    @logic.auth_allow_anonymous_access
     def auth_resource_show(self, context, data_dict):
         """
         if the grace period is set and the user does not belong to collaborators
@@ -97,7 +94,36 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
         """
         res = context['resource']
         pkg = res.package
-        if self._is_resource_available(pkg.__dict__, res.__dict__):
+
+        # Basic check:
+        # Ensure user who can edit the package can see the resource
+        resource = data_dict.get('resource', context.get('resource', {}))
+        if not resource:
+            resource = logic_auth.get_resource_object(context, data_dict)
+        if type(resource) is not dict:
+            resource = resource.as_dict()
+        is_authorized = authz.is_authorized(
+            'package_show', context, {'id': resource.get('package_id')}
+        ).get('success', False)
+
+        # Grace period check
+        if is_authorized:
+            is_resource_available = self._is_resource_available(
+                pkg.__dict__, res.__dict__
+            )
+            # Check collaborators if authenticated
+            # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
+            is_collaborator = False
+            if g.userobj is not None and authz.check_config_permission(
+                'allow_dataset_collaborators'
+            ):
+                is_collaborator = authz.user_is_collaborator_on_dataset(
+                    g.userobj.id, pkg.id
+                )
+
+            is_authorized = is_resource_available or is_collaborator
+
+        if is_authorized:
             return {'success': True}
         else:
             return {
