@@ -9,10 +9,9 @@
 
 
 {% block resource_item_explore %}
-  {% if not h.is_resource_available(pkg, res) %}
+  {% if not h.is_resource_available(res) %}
     <div class=" btn-group">
-      <b>{{ _('Available since') }}</b>
-      <p>{{ res['available_since'] }}</p>
+      {{ _('Available since') }} {{ res['available_since'] }}
     </div>
   {% else %}
     {{ super() }}
