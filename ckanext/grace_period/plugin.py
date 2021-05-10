@@ -7,6 +7,7 @@ import ckan.plugins.toolkit as toolkit
 from ckan import authz, logic
 from ckan.common import _, g
 import ckanext.grace_period.auth as auth
+import ckanext.grace_period.action as action
 
 log = logging.getLogger(__name__)
 
@@ -15,6 +16,8 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     '''
     Add grace period into CKAN resources
     '''
+
+    plugins.implements(plugins.IActions)
     plugins.implements(plugins.IAuthFunctions)
     plugins.implements(plugins.IDatasetForm)
     plugins.implements(plugins.IConfigurer)
@@ -70,6 +73,11 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def get_auth_functions(self):
         return {
             'resource_show': auth.auth_resource_show,
-            # 'resource_read': auth.auth_resource_show,
+            'resource_view_show': auth.auth_resource_show,
         }
 
+    # IActions
+    def get_actions(self):
+        return {
+            'resource_view_list': action.grace_period_restricted_resource_view_list,
+        }

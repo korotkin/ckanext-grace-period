@@ -17,7 +17,7 @@ def auth_resource_show(context, data_dict):
      --> do not allow access
     :return:
     """
-    res = context['resource']
+    res = data_dict.get('resource', context.get('resource', {}))
     pkg = res.package
 
     # Basic check:
