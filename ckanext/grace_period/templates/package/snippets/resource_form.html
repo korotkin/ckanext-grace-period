@@ -1,6 +1,6 @@
 {% ckan_extends %}
 
 {% block metadata_fields %}
-  {{ form.input('available_since', label=_('Available since'), id='field-grace-period', placeholder=_('2001.12.31'), value=data.available_since, error=errors.available_since, classes=['control-medium']) }}
+  {{ form.input('available_since', type='date', label=_('Available since'), id='field-grace-period', placeholder=_('2001.12.31'), value=data.available_since, error=errors.available_since, classes=['control-medium']) }}
   {{ super() }}
 {% endblock %}
