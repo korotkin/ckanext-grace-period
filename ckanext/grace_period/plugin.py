@@ -56,9 +56,12 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def _modify_package_schema(self, schema):
         schema['extras'].update({
             'available_since': [
-                toolkit.get_validator('ignore_missing'),
-                toolkit.get_validator('date_only'),
                 toolkit.get_converter('convert_from_extras'),
+            ]
+        })
+        schema['resources'].update({
+            'available_since': [
+                toolkit.get_validator('date_only'),
             ]
         })
         return schema
