@@ -7,9 +7,9 @@
   pkg - A package dict that the resource belongs to
 #}
 
-
+{% set resource_available = h.check_access('resource_show', {'id': res.id, 'resource': res }) %}
   {% block resource_item_title %}
-    {% if h.is_resource_available(res) %}
+    {% if resource_available %}
       <a class="heading" href="{{ url }}" title="{{ res.name or res.description }}">
         {{ h.resource_display_name(res) | truncate(50) }}
         <span class="format-label" property="dc:format" data-format="{{ res.format.lower() or 'data' }}">
@@ -26,7 +26,7 @@
   {% endblock %}
 
 {% block resource_item_explore %}
-  {% if not h.is_resource_available(res) %}
+  {% if not resource_available %}
     <div class=" btn-group">
       {{ _('Available since') }} {{ res['available_since'] }}
     </div>
