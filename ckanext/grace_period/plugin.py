@@ -8,6 +8,7 @@ from ckan import authz, logic
 from ckan.common import _, g
 import ckanext.grace_period.auth as auth
 import ckanext.grace_period.action as action
+from ckanext.grace_period.validators import date_only_validator
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     plugins.implements(plugins.IActions)
     plugins.implements(plugins.IAuthFunctions)
+    plugins.implements(plugins.IValidators)
     plugins.implements(plugins.IDatasetForm)
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.ITemplateHelpers)
@@ -46,11 +48,20 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     def package_form(self):
         return super().package_form()
 
+    def get_validators(self):
+        return {
+            'date_only': date_only_validator,
+        }
+
     def _modify_package_schema(self, schema):
         schema['extras'].update({
             'available_since': [
-                toolkit.get_validator('ignore_missing'),
                 toolkit.get_converter('convert_from_extras'),
+            ]
+        })
+        schema['resources'].update({
+            'available_since': [
+                toolkit.get_validator('date_only'),
             ]
         })
         return schema

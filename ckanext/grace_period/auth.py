@@ -9,6 +9,8 @@ from ckan.common import _, g
 
 log = logging.getLogger(__name__)
 
+DATE_FORMATS = ('%Y.%m.%d', '%Y-%m-%d', '%Y %m %d')
+
 
 @logic.auth_allow_anonymous_access
 def auth_resource_show(context, data_dict):
@@ -41,7 +43,7 @@ def auth_resource_show(context, data_dict):
         }
 
     # Grace period check
-    if is_allowed_by_grace_period(pkg.__dict__, res.__dict__):
+    if is_allowed_by_grace_period(res.__dict__):
         return {'success': True}
 
     # Check collaborators if authenticated
@@ -60,20 +62,22 @@ def auth_resource_show(context, data_dict):
     }
 
 
-def is_allowed_by_grace_period(pkg, res):
+def is_allowed_by_grace_period(res):
     if 'extras' in res:
         available_since = res['extras'].get('available_since', None)
-        if available_since:
-            try:
-                return _try_parse(available_since) < datetime.now()
-            except ValueError as e:
-                log.warning(e)
-                return False
+    else:
+        available_since = res.get('available_since', None)
+    if available_since:
+        try:
+            return _try_parse(available_since) < datetime.now()
+        except ValueError as e:
+            log.warning(e)
+            return False
     return True
 
 
 def _try_parse(s):
-    for date_fmt in ('%Y.%m.%d', '%Y-%m-%d', '%Y %m %d'):
+    for date_fmt in DATE_FORMATS:
         try:
             return datetime.strptime(s, date_fmt)
         except ValueError:
