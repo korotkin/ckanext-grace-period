@@ -19,45 +19,46 @@ def auth_resource_show(context, data_dict):
      --> do not allow access
     :return:
     """
-    res = data_dict.get('resource', context.get('resource', {}))
-    pkg = res.package
-
-    # Basic check:
-    # Ensure user who can edit the package can see the resource
     resource = data_dict.get('resource', context.get('resource', {}))
     if not resource:
         resource = logic_auth.get_resource_object(context, data_dict)
     if type(resource) is not dict:
         resource = resource.as_dict()
 
+    pkg_id = resource.get('package_id')
+
+    # Basic check:
+    # Ensure user who can edit the package can see the resource
     if authz.is_authorized(
         'package_update', context,
-        {'id': resource.get('package_id')}).get('success'):
+        {'id': pkg_id}).get('success'):
         return {'success': True}
 
-    auth = authz.is_authorized('package_show', context, {'id': resource.get('package_id')})
+    # If the user is not authorized, deny access
+    auth = authz.is_authorized('package_show', context, {'id': pkg_id})
     if not auth.get('success', False):
         return {
             'success': False,
-            'msg': _('User {} not authorized to read resource {}').format(g.user, res.id)
+            'msg': _('User {} not authorized to read resource').format(g.user)
         }
 
-    # Grace period check
-    if is_allowed_by_grace_period(res.__dict__):
+    # The user is authorized so far: now check for grace period
+    # If there are not grace period constraints, the resource is allowed
+    if is_allowed_by_grace_period(resource):
         return {'success': True}
 
-    # Check collaborators if authenticated
-    # https://docs.ckan.org/en/2.9/maintaining/authorization.html#dataset-collaborators
-
+    # We are within grace period.
+    # Owner and admins have already been granted access (because they can update the package)
+    # Allow read-only collaborators to access the resource
     if g.userobj and \
             authz.check_config_permission('allow_dataset_collaborators') and \
-            authz.user_is_collaborator_on_dataset(g.userobj.id, pkg.id):
+            authz.user_is_collaborator_on_dataset(g.userobj.id, pkg_id):
         return {'success': True}
 
     return {
         'success': False,
-        'msg': _('User {} not authorized to read resource {} in its grace period').format(
-            g.userobj.name if g.userobj else '-Anonymous-', res.id
+        'msg': _('User {} not authorized to read resource in its grace period').format(
+            g.userobj.name if g.userobj else '-Anonymous-'
         )
     }
 
