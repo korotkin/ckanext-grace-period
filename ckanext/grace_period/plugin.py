@@ -25,16 +25,25 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.ITemplateHelpers)
 
+    # IConfigurer
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
         # that CKAN will use this plugin's custom templates.
         toolkit.add_template_directory(config, u'templates')
 
+    # ITemplateHelpers
     def get_helpers(self):
         return {
             'is_resource_available': auth.is_allowed_by_grace_period,
         }
 
+    # IValidators
+    def get_validators(self):
+        return {
+            'date_only': date_only_validator,
+        }
+
+    # IDatasetForm
     def is_fallback(self):
         # Return True to register this plugin as the default handler for
         # package types not handled by any other IDatasetForm plugin.
@@ -45,22 +54,10 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
         # registers itself as the default (above).
         return []
 
-    def package_form(self):
-        return super().package_form()
-
-    def get_validators(self):
-        return {
-            'date_only': date_only_validator,
-        }
-
     def _modify_package_schema(self, schema):
-        schema['extras'].update({
-            'available_since': [
-                toolkit.get_converter('convert_from_extras'),
-            ]
-        })
         schema['resources'].update({
             'available_since': [
+                toolkit.get_validator('ignore_missing'),
                 toolkit.get_validator('date_only'),
             ]
         })
@@ -81,6 +78,7 @@ class GracePeriodPlugin(plugins.SingletonPlugin, toolkit.DefaultDatasetForm):
         schema = self._modify_package_schema(schema)
         return schema
 
+    # IAuthFunctions
     def get_auth_functions(self):
         return {
             'resource_show': auth.auth_resource_show,
