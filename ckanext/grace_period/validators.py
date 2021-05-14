@@ -1,6 +1,5 @@
 from ckan.common import _
 from ckan.plugins.toolkit import Invalid
-
 from ckanext.grace_period.auth import _try_parse
 
 

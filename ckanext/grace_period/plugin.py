@@ -1,13 +1,9 @@
 import logging
-from datetime import datetime
 
-import ckan.logic.auth as logic_auth
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckan import authz, logic
-from ckan.common import _, g
-import ckanext.grace_period.auth as auth
 import ckanext.grace_period.action as action
+import ckanext.grace_period.auth as auth
 from ckanext.grace_period.validators import date_only_validator
 
 log = logging.getLogger(__name__)

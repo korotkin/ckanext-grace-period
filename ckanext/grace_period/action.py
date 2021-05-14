@@ -1,11 +1,11 @@
-# coding: utf8
-
 from __future__ import unicode_literals
+
+from logging import getLogger
+
 import ckan.logic
 from ckan.logic.action.get import resource_view_list
 from ckanext.grace_period import auth
 
-from logging import getLogger
 log = getLogger(__name__)
 
 _get_or_bust = ckan.logic.get_or_bust

@@ -2,8 +2,6 @@ import logging
 from datetime import datetime
 
 import ckan.logic.auth as logic_auth
-import ckan.plugins as plugins
-import ckan.plugins.toolkit as toolkit
 from ckan import authz, logic
 from ckan.common import _, g
 
@@ -31,7 +29,7 @@ def auth_resource_show(context, data_dict):
     # Ensure user who can edit the package can see the resource
     if authz.is_authorized(
         'package_update', context,
-        {'id': pkg_id}).get('success'):
+            {'id': pkg_id}).get('success'):
         return {'success': True}
 
     # If the user is not authorized, deny access

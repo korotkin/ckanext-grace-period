@@ -37,7 +37,7 @@ no_lines_before = ['LOCALFOLDER']
 multi_line_output = 3
 line_length = 79
 known_first_party = ['ckan', 'ckanext']
-known_third_party = ["setuptools"]
+known_third_party = ["pytest", "setuptools"]
 include_trailing_comma = true
 skip = ['.venv']
 
